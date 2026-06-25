@@ -13,15 +13,15 @@ import java.util.List;
 
 /**
  * Camada de integração — articulador central do sistema.
- *
+ * <p>
  * Responsabilidades (seção 3.5, Camada de Integração do artigo):
- *  1. Receber o laudo processado pelo LLM (LaudoDTO) e os dados do paciente (PacienteDTO).
- *  2. Usar o número do prontuário como chave única para vincular as duas fontes.
- *  3. Persistir o registro unificado no banco relacional via JPA/Hibernate.
- *  4. Acionar o AlertaService se for detectado evento adverso (multirresistência).
- *
+ * 1. Receber o laudo processado pelo LLM (LaudoDTO) e os dados do paciente (PacienteDTO).
+ * 2. Usar o número do prontuário como chave única para vincular as duas fontes.
+ * 3. Persistir o registro unificado no banco relacional via JPA/Hibernate.
+ * 4. Acionar o AlertaService se for detectado evento adverso (multirresistência).
+ * <p>
  * Fluxo corresponde ao Diagrama de Sequência (Figura 4 do artigo):
- *  Agendador → Extração → LLM → [este serviço] → IntegraSUS → Persistência → Alerta → JavaFX
+ * Agendador → Extração → LLM → [este serviço] → IntegraSUS → Persistência → Alerta → JavaFX
  */
 @Service
 @RequiredArgsConstructor
@@ -57,13 +57,13 @@ public class IntegracaoService {
 
         // 3. Resolve o microrganismo (cria se não existir)
         Microorganismo microorganismo = resolverMicroorganismo(
-                laudo.getMicrobiologia().getPatogeno());
+                laudo.getMicroorganismo());
 
         // 4. Cria a amostra laboratorial unificada
         RealAmostra amostra = RealAmostra.builder()
                 .prontuario(prontuario)
                 .registroAmostra(laudo.getRegistroAmostra())
-                .descricao(laudo.getMicrobiologia().getResultadoCultura())
+                .descricao(laudo.getDescricao())
                 .dataColeta(java.time.LocalDate.now())
                 .microorganismo(microorganismo)
                 .status(RealAmostra.StatusAmostra.CONCLUIDO)
@@ -71,12 +71,11 @@ public class IntegracaoService {
                 .build();
 
         // 5. Mapeia o antibiograma completo
-        List<PerfilAntimicrobiano> perfis = laudo.getMicrobiologia()
-                .getAntibiograma().stream()
+        List<PerfilAntimicrobiano> perfis = laudo.getPerfilResistencia().entrySet().stream()
                 .map(entrada -> PerfilAntimicrobiano.builder()
                         .amostra(amostra)
-                        .antimicrobiano(entrada.getAntimicrobiano())
-                        .perfil(mapearPerfil(entrada.getPerfil()))
+                        .antimicrobiano(entrada.getKey())
+                        .perfil(mapearPerfil(entrada.getValue()))
                         .build())
                 .toList();
 
@@ -90,7 +89,7 @@ public class IntegracaoService {
         // 6. Verifica evento adverso e dispara alerta
         if (laudo.isMultirresistente()) {
             log.warn("[Integração] EVENTO ADVERSO detectado — patógeno: {} | paciente: {} | leito: {}",
-                    laudo.getMicrobiologia().getPatogeno(),
+                    laudo.getMicroorganismo(),
                     pacienteDTO.getNome(),
                     pacienteDTO.getLeito());
             alertaService.notificar(amostra, pacienteDTO, laudo);
@@ -139,10 +138,10 @@ public class IntegracaoService {
     private PerfilAntimicrobiano.PerfilSensibilidade mapearPerfil(String perfil) {
         return switch (perfil.trim().toUpperCase()
                 .replace("Á", "A").replace("Ê", "E").replace("Ó", "O")) {
-            case "RESISTENTE"    -> PerfilAntimicrobiano.PerfilSensibilidade.RESISTENTE;
+            case "RESISTENTE" -> PerfilAntimicrobiano.PerfilSensibilidade.RESISTENTE;
             case "INTERMEDIARIO",
                  "INTERMEDIÁRIO" -> PerfilAntimicrobiano.PerfilSensibilidade.INTERMEDIARIO;
-            default              -> PerfilAntimicrobiano.PerfilSensibilidade.SENSIVEL;
+            default -> PerfilAntimicrobiano.PerfilSensibilidade.SENSIVEL;
         };
     }
 }

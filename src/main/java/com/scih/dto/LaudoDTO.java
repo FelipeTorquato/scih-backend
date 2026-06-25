@@ -1,27 +1,30 @@
 package com.scih.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * DTO de transferência do laudo microbiológico.
- *
+ * <p>
  * {
- *   "registro_amostra": "2026-98745A",
- *   "paciente": { "prontuario": "8472910" },
- *   "microbiologia": {
- *     "resultado_cultura": "Positivo",
- *     "patogeno": "Klebsiella pneumoniae",
- *     "antibiograma": [
- *       { "antimicrobiano": "Meropenem", "perfil": "Resistente" }
- *     ]
- *   }
+ * "registro_amostra": "2026-98745A",
+ * "paciente": { "prontuario": "8472910" },
+ * "microbiologia": {
+ * "resultado_cultura": "Positivo",
+ * "patogeno": "Klebsiella pneumoniae",
+ * "antibiograma": [
+ * { "antimicrobiano": "Meropenem", "perfil": "Resistente" }
+ * ]
+ * }
  * }
  */
 @Data
@@ -30,76 +33,49 @@ import java.util.List;
 @Builder
 public class LaudoDTO {
 
-    @NotBlank(message = "Registro da amostra é obrigatório")
-    @JsonProperty("registro_amostra")
-    private String registroAmostra;
+    @NotBlank(message = "ID do prontuário é obrigatório")
+    @JsonProperty("prontuario_id")
+    private String prontuarioId;
 
-    @NotNull(message = "Dados do paciente são obrigatórios")
-    @Valid
-    private PacienteRef paciente;
+    @NotBlank(message = "Nome do paciente é obrigatório")
+    @JsonProperty("paciente_nome")
+    private String pacienteNome;
 
-    @NotNull(message = "Dados microbiológicos são obrigatórios")
-    @Valid
-    private Microbiologia microbiologia;
+    @NotNull(message = "Data de coleta é obrigatória")
+    @JsonProperty("data_coleta")
+    private LocalDate dataColeta;
 
-    // ----------------------------------------------------------------
+    @NotBlank(message = "Microorganismo é obrigatório")
+    private String microorganismo;
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class PacienteRef {
-        @NotBlank(message = "Número do prontuário é obrigatório")
-        private String prontuario;
-    }
+    @NotBlank(message = "Descrição é obrigatória")
+    private String descricao;
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Microbiologia {
-        @NotBlank(message = "Resultado da cultura é obrigatório")
-        @JsonProperty("resultado_cultura")
-        private String resultadoCultura;
-
-        @NotBlank(message = "Patógeno é obrigatório")
-        private String patogeno;
-
-        @NotEmpty(message = "Antibiograma não pode ser vazio")
-        @Valid
-        private List<EntradaAntibiograma> antibiograma;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EntradaAntibiograma {
-        @NotBlank(message = "Nome do antimicrobiano é obrigatório")
-        private String antimicrobiano;
-
-        @NotBlank(message = "Perfil de sensibilidade é obrigatório")
-        private String perfil; // "Sensível", "Intermediário", "Resistente"
-    }
+    @NotEmpty(message = "Perfil de resistência não pode ser vazio")
+    @JsonProperty("perfil_resistencia")
+    private Map<String, String> perfilResistencia;
 
     // ----------------------------------------------------------------
     // Métodos auxiliares de negócio
 
     /**
-     * Retorna o número do prontuário diretamente, evitando navegação encadeada
-     * em serviços que precisam apenas dessa chave.
+     * Detecta multirresistência: considera multirresistente se o laudo possui
+     * 2 ou mais antimicrobianos com perfil RESISTENTE.
      */
-    public String getProntuarioId() {
-        return paciente != null ? paciente.getProntuario() : null;
+    public boolean isMultirresistente() {
+        if (perfilResistencia == null) return false;
+        long resistentes = perfilResistencia.values().stream()
+                .filter(perfil -> "RESISTENTE".equalsIgnoreCase(perfil))
+                .count();
+        return resistentes >= 2;
     }
 
     /**
-     * Detecta multirresistência: considera multirresistente se o laudo possui
-     * 2 ou mais antimicrobianos com perfil RESISTENTE.
-     * Critério simplificado — pode ser refinado conforme protocolo do SCIH.
+     * Como o mock scih-nuvem não retorna um 'registro_amostra',
+     * geramos um identificador provisório combinando o prontuário e a data
+     * para manter a lógica de deduplicação no IntegracaoService.
      */
-    public boolean isMultirresistente() {
-        if (microbiologia == null || microbiologia.getAntibiograma() == null) return false;
-        long resistentes = microbiologia.getAntibiograma().stream()
-                .filter(e -> "Resistente".equalsIgnoreCase(e.getPerfil()))
-                .count();
-        return resistentes >= 2;
+    public String getRegistroAmostra() {
+        return prontuarioId + "-" + dataColeta.toString();
     }
 }
