@@ -43,8 +43,10 @@ public class ColetaScheduler {
         LocalDateTime inicio = LocalDateTime.now();
         log.info("[Scheduler] ▶ Iniciando ciclo de coleta — {}", inicio);
 
+        LocalDate dataLaudos = LocalDate.of(2026,6,25);
+
         try {
-            List<LaudoDTO> laudos = dataClient.buscarLaudos(LocalDate.now());
+            List<LaudoDTO> laudos = dataClient.buscarLaudos(dataLaudos);
 
             if (laudos.isEmpty()) {
                 log.info("[Scheduler] Nenhum laudo novo encontrado.");
