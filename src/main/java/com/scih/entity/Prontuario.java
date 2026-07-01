@@ -69,4 +69,12 @@ public class Prontuario {
     @OneToMany(mappedBy = "prontuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<RealAmostra> amostras = new ArrayList<>();
+
+    @Column(name = "data_criacao_sistema", nullable = false, updatable = false)
+    private java.time.LocalDateTime dataCriacaoSistema;
+
+    @PrePersist
+    protected void onCreate() {
+        this.dataCriacaoSistema = java.time.LocalDateTime.now();
+    }
 }

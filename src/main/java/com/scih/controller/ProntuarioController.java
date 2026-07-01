@@ -77,6 +77,7 @@ public class ProntuarioController {
     private Map<String, Object> toDetalhe(Prontuario p) {
         List<Map<String, Object>> amostras = p.getAmostras().stream()
                 .map(a -> Map.<String, Object>of(
+                        "id", a.getId(),
                         "registroAmostra", a.getRegistroAmostra() != null ? a.getRegistroAmostra() : "-",
                         "descricao", a.getDescricao(),
                         "dataColeta", a.getDataColeta().toString(),

@@ -65,4 +65,12 @@ public class RealAmostra {
         AGUARDANDO,
         CONCLUIDO
     }
+
+    @Column(name = "data_criacao_sistema", nullable = false, updatable = false)
+    private java.time.LocalDateTime dataCriacaoSistema;
+
+    @PrePersist
+    protected void onCreate() {
+        this.dataCriacaoSistema = java.time.LocalDateTime.now();
+    }
 }

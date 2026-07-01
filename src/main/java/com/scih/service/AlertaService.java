@@ -7,7 +7,6 @@ import com.scih.entity.RealAmostra;
 import com.scih.repository.RealAmostraRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -31,7 +30,6 @@ import java.util.Map;
 public class AlertaService {
 
     private final RealAmostraRepository amostrasRepo;
-    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Emite alerta para evento adverso detectado.
@@ -55,32 +53,10 @@ public class AlertaService {
                 .dataHoraAlerta(LocalDateTime.now())
                 .build();
 
-        // Publica o evento internamente — JavaFX pode escutar via @EventListener
-        eventPublisher.publishEvent(new AlertaEvent(this, alerta));
-
         // Marca amostra para evitar reemissão
         amostra.setAlertaEmitido(true);
         amostrasRepo.save(amostra);
 
         log.warn("[Alerta] ⚠ EVENTO ADVERSO — {}", alerta.getResumo());
-    }
-
-    // ----------------------------------------------------------------
-
-    /**
-     * Evento Spring publicado a cada novo alerta.
-     * A camada JavaFX escuta este evento via ApplicationListener.
-     */
-    public static class AlertaEvent extends org.springframework.context.ApplicationEvent {
-        private final AlertaDTO alerta;
-
-        public AlertaEvent(Object source, AlertaDTO alerta) {
-            super(source);
-            this.alerta = alerta;
-        }
-
-        public AlertaDTO getAlerta() {
-            return alerta;
-        }
     }
 }
